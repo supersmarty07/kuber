@@ -1,0 +1,13 @@
+[build-system]
+requires = ["flit_core>=3.9,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "nepal_retail"
+version = "0.1.0"
+description = "Reviewed voice-order and Nepal retail integration foundations for ERPNext"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.32,<3"]
+
+[tool.flit.module]
+name = "nepal_retail"

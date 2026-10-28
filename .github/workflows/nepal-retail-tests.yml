@@ -1,0 +1,29 @@
+name: Nepal Retail Foundation
+
+on:
+  pull_request:
+    paths:
+      - "apps/nepal_retail/**"
+      - ".github/workflows/nepal-retail-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        python: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install ./apps/nepal_retail "ruff>=0.9,<1"
+      - run: python -m unittest discover -s apps/nepal_retail/tests -v
+      - run: ruff check apps/nepal_retail
+      - run: ruff format --check apps/nepal_retail
+      - run: python -m pip wheel --no-deps ./apps/nepal_retail --wheel-dir /tmp/nepal-retail-wheels
