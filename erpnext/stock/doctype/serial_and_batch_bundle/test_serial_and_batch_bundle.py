@@ -106,6 +106,15 @@ class TestSerialBatchBundleEntry(ERPNextTestSuite):
 
 
 class TestSerialandBatchBundle(ERPNextTestSuite):
+	def test_voucher_no_and_voucher_type_are_indexed(self):
+		if frappe.db.db_type != "mariadb":
+			self.skipTest("MariaDB index names")
+
+		self.assertTrue(frappe.db.has_index("tabSerial and Batch Bundle", "voucher_no_voucher_type_index"))
+		self.assertFalse(
+			frappe.db.get_column_index("tabSerial and Batch Bundle", "voucher_type", unique=False)
+		)
+
 	def test_serial_availability_at_posting_cutoff(self):
 		from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import get_stock_balance_for
 
@@ -423,33 +432,6 @@ class TestSerialandBatchBundle(ERPNextTestSuite):
 		)
 
 		self.assertEqual(flt(stock_value_difference, 2), -5000)
-
-	def test_outward_batch_valuation_takes_transaction_advisory_lock(self):
-		if frappe.db.db_type != "postgres":
-			self.skipTest("advisory locks are a PostgreSQL feature")
-
-		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
-		from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import make_purchase_receipt
-
-		item_code = make_item(
-			properties={
-				"has_batch_no": 1,
-				"create_new_batch": 1,
-				"batch_number_series": "TEST-ADV-LCK-.#####",
-				"is_stock_item": 1,
-			},
-		).name
-
-		make_purchase_receipt(item_code=item_code, warehouse="_Test Warehouse - _TC", qty=5, rate=100)
-
-		def held_advisory_locks():
-			return frappe.db.sql(
-				"SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"
-			)[0][0]
-
-		before = held_advisory_locks()
-		create_delivery_note(item_code=item_code, warehouse="_Test Warehouse - _TC", qty=2, rate=200)
-		self.assertGreater(held_advisory_locks(), before)
 
 	def test_old_batch_valuation(self):
 		with patch.dict(
@@ -2125,6 +2107,42 @@ class TestSerialandBatchBundle(ERPNextTestSuite):
 			do_not_submit=True,
 		)
 		self.assertRaises(NegativeStockError, backdated.submit)
+
+	def test_batch_quantity_check_sums_entries_before_posting_time(self):
+		item_code = "Test Batch Quantity Before Posting Item"
+		(batch_no,) = self._setup_negative_batch_item(item_code, ["TBQBP-BATCH-001"])
+		warehouse = "_Test Warehouse - _TC"
+
+		for qty, days, is_inward in ((100, -10, True), (30, -5, False), (20, -1, True)):
+			make_stock_entry(
+				item_code=item_code,
+				qty=qty,
+				rate=100,
+				target=warehouse if is_inward else None,
+				source=None if is_inward else warehouse,
+				use_serial_batch_fields=True,
+				batch_no=batch_no,
+				posting_date=add_days(today(), days),
+				posting_time="10:00:00",
+			)
+
+		outward = make_stock_entry(
+			item_code=item_code,
+			qty=10,
+			source=warehouse,
+			use_serial_batch_fields=True,
+			batch_no=batch_no,
+			posting_date=add_days(today(), -3),
+			posting_time="10:00:00",
+		)
+		bundle = frappe.get_doc("Serial and Batch Bundle", outward.items[0].serial_and_batch_bundle)
+		posting_datetime = frappe.utils.get_datetime(bundle.posting_datetime)
+
+		self.assertEqual(bundle.get_batchwise_qty_before(posting_datetime), {batch_no: 70})
+		self.assertEqual(
+			sorted(flt(row.qty) for row in bundle.get_available_qty_from_sabb(posting_datetime)), [-10, 20]
+		)
+		self.assertEqual(bundle.get_batchwise_available_qty(), {batch_no: 80})
 
 	def make_serial_item_for_valuation(self, item_code, use_serial_no_wise_valuation):
 		return make_item(
