@@ -4,6 +4,7 @@ import frappe
 
 from nepal_retail.voice.catalogue import POSCatalogue
 from nepal_retail.voice.contracts import InvalidOrder
+from nepal_retail.voice.draft import build_reviewed_cart_draft
 from nepal_retail.voice.preview import preview_order
 from nepal_retail.voice.providers import OpenAIProvider, ProviderUnavailable
 
@@ -61,4 +62,13 @@ def transcribe(pos_profile):
 		transcript = provider().transcribe(upload.stream.read(4 * 1024 * 1024 + 1))
 		return {"transcript": transcript, "requires_review": True}
 	except (InvalidOrder, ProviderUnavailable) as error:
+		frappe.throw(str(error), frappe.ValidationError)
+
+
+@frappe.whitelist(methods=["POST"])
+def build_cart_draft(pos_profile, selection):
+	catalogue = authorize(pos_profile)
+	try:
+		return build_reviewed_cart_draft(selection, catalogue)
+	except InvalidOrder as error:
 		frappe.throw(str(error), frappe.ValidationError)

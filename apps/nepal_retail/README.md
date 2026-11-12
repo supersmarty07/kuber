@@ -10,13 +10,33 @@ billing product. POS Awesome is not installed or verified compatible yet.
   discounts. Model-supplied prices, totals, item identifiers and actions are rejected.
 - Read-only preview API using ERPNext's POS item search with additional profile,
   assigned-user, company, warehouse and Item permission checks.
-- Optional OpenAI Whisper transcription and schema-constrained extraction. Audio
-  must be 16-bit PCM WAV, mono/stereo, 8-48 kHz, at most 30 seconds and 4 MiB.
+- Reviewed cart draft builder (`nepal_retail.api.voice.build_cart_draft`) and browser
+  PCM16 WAV recorder/cart adapter (`nepal_retail/public/js/pos_voice_review.js`) with
+  cashier ambiguity resolution, server-side `Item Price` lookup, secondary UOM scaling,
+  discount threshold / manager approval enforcement and deterministic `order_revision`
+  hashes without auto-submission.
+- Nepal localisation helpers (`nepal_retail.localisation`): Bikram Sambat (BS) calendar
+  conversions (`ad_to_bs`, `bs_to_ad`, Shrawan 1 fiscal-year window calculation),
+  9-digit Nepal PAN/VAT validation, exact-Decimal 13% VAT / exempt / zero-rated tax
+  and discount calculation (tax-inclusive and tax-exclusive), and company readiness
+  verification (`verify_company_localisation`).
+- Optional OpenAI Whisper transcription and schema-constrained extraction, plus
+  PCM16/Float32 WAV normalization (`nepal_retail.voice.audio`). Audio must be 16-bit
+  PCM WAV, mono/stereo, 8-48 kHz, at most 30 seconds and 4 MiB.
 - Server-only provider settings, disabled-by-default feature flags, ten requests
   per user per calendar minute, HTTP timeouts, response size bounds and no redirects.
-- Immutable payment state model with exact NPR minor units, changed-cart detection,
-  duplicate-result handling and safeguards against recharging unknown payments.
-- Immutable fiscal payload envelope and explicit unknown-outcome retry gate.
+- Payment domain and repository (`nepal_retail.payments`): exact NPR minor units,
+  changed-cart and active-order-revision guards, idempotent event deduplication,
+  HMAC-SHA256 dynamic wallet QR signing/callback verification, outbound-polled local
+  POS terminal agent coordinator with TTL and cardholder-data (`PAN`/`PIN`/`CVV`)
+  rejection, paid-but-unissued invoice failure tracking, settlement reconciliation
+  and manager-authorized refunds.
+- Fiscal protection and CBMS integration modules (`nepal_retail.compliance`):
+  company/branch/BS-fiscal-year monotonic sequence numbering (`TI-` and `CN-`),
+  single-legal-invoice-per-sale consolidation guard, post-submission fiscal field
+  immutability and cancel/delete/rename blocking, Credit Note validation, canonical
+  IRD CBMS payload generation, HTTPS client and transactional outbox with
+  after-commit dispatch and unknown-outcome retry protection.
 
 Every order preview requires review. It does not select a customer or item, apply
 discounts, save/submit an invoice, change stock, charge money or send data to IRD.
@@ -84,6 +104,10 @@ Use Frappe's normal authenticated session/CSRF or token authentication.
   Returns a transcript for review; does not automatically extract or sell.
 - `nepal_retail.api.voice.preview_transcript`: JSON `pos_profile` and reviewed
   `transcript`; returns a catalogue candidate preview.
+- `nepal_retail.api.voice.build_cart_draft`: JSON `pos_profile` and cashier-confirmed
+  `selection` (`items` with `item_code`, `quantity`, `uom`, optional `customer`,
+  `discount`, and `manager_approval_reference`); returns a server-priced, non-submitted
+  cart draft with an `order_revision` digest.
 
 Example body for the first endpoint:
 

@@ -2,9 +2,13 @@
 
 ## Current Milestone
 
-Backend contracts and reviewed voice preview are implemented. Unit tests use
-mocked Frappe/HTTP and do not require a live site. Payment and CBMS models are
-foundations only. No invoice, tax or deployment configuration has been changed.
+Backend contracts, reviewed voice preview, cashier-confirmed cart draft builder,
+browser PCM16 WAV recorder/review adapter, Bikram Sambat calendar & 13% VAT/PAN
+localisation services, payment repository / HMAC QR / outbound terminal coordinator,
+and fiscal numbering / immutability protection / CBMS payload & transactional outbox
+modules are implemented and covered by unit tests. Live Frappe site installation,
+database DocType migrations, external merchant/terminal credentials, and official IRD
+CBMS sandbox/production certification remain to be executed in a staging bench.
 
 ## Compatibility Gate
 

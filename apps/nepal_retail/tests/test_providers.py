@@ -4,9 +4,13 @@ import unittest
 import wave
 from unittest.mock import MagicMock, Mock
 
-import requests
 from nepal_retail.voice.contracts import InvalidOrder
-from nepal_retail.voice.providers import OpenAIProvider, ProviderUnavailable, validate_audio
+from nepal_retail.voice.providers import (
+	OpenAIProvider,
+	ProviderUnavailable,
+	requests,
+	validate_audio,
+)
 
 
 def recording(seconds=1):

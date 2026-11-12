@@ -100,3 +100,7 @@ class APITests(unittest.TestCase):
 		with self.assertRaises(ValueError):
 			self.api.preview("POS-1", {"items": [], "submit": True})
 		self.catalogue.return_value.search.assert_not_called()
+
+	def test_build_cart_draft_endpoint_rejects_untrusted_selection(self):
+		with self.assertRaises(ValueError):
+			self.api.build_cart_draft("POS-1", {"items": [], "submit": True})

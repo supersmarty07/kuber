@@ -2,7 +2,22 @@ import io
 import json
 import wave
 
-import requests
+try:
+	import requests
+except ModuleNotFoundError:  # pragma: no cover
+
+	class _RequestsFallback:
+		class RequestException(OSError):
+			pass
+
+		class Timeout(RequestException):
+			pass
+
+		@staticmethod
+		def post(*args, **kwargs):
+			raise _RequestsFallback.RequestException("requests library is not installed")
+
+	requests = _RequestsFallback()
 
 from nepal_retail.voice.contracts import InvalidOrder, parse_order, text
 
